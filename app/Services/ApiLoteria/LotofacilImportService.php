@@ -29,6 +29,7 @@ class LotofacilImportService
 
         $novosConcursos = collect($concursos)
             ->whereNotIn('concurso', $existentes)
+            ->sortBy('concurso')
             ->all();
 
         foreach ($novosConcursos as $concurso) {
