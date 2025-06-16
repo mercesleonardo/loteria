@@ -7,7 +7,7 @@ use Illuminate\Console\Command;
 
 class Playground extends Command
 {
-    protected $signature = 'play';
+    protected $signature = 'lotofacil:importar';
 
     protected $description = 'Importa concursos da Lotofácil da API e salva no banco de dados';
 
