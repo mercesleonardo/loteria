@@ -7,6 +7,6 @@ Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote')->hourly();
 
-Schedule::command('play')
+Schedule::command('lotofacil:importar')
     ->daily()
     ->appendOutputTo(storage_path('logs/play.log'));
