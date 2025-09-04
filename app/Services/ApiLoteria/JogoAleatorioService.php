@@ -16,6 +16,7 @@ class JogoAleatorioService
                 $numeros = explode(',', $dezenas);
             }
             sort($numeros);
+
             return implode(',', $numeros);
         }, $existentes);
 
@@ -25,6 +26,7 @@ class JogoAleatorioService
             $jogo = $this->gerarJogoAleatorio();
 
             $chave = implode(',', $jogo);
+
             if (!in_array($chave, $existentes) && !in_array($chave, $jogosGerados)) {
                 $jogosGerados[] = $chave;
             }
@@ -41,7 +43,7 @@ class JogoAleatorioService
         $jogo = array_slice($numeros, 0, 15);
         sort($jogo);
 
-         // Formata com dois dígitos (01, 02, ..., 25)
+        // Formata com dois dígitos (01, 02, ..., 25)
         return array_map(function ($numero) {
             return str_pad($numero, 2, '0', STR_PAD_LEFT);
         }, $jogo);

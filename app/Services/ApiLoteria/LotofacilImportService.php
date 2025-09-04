@@ -4,6 +4,8 @@ namespace App\Services\ApiLoteria;
 
 use App\Models\LotofacilConcurso;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Throwable;
 
 class LotofacilImportService
 {
@@ -14,7 +16,7 @@ class LotofacilImportService
         $this->apiLoteria = $apiLoteria;
     }
 
-    public function importarNovosConcursos()
+    public function importarNovosConcursos(): int
     {
         $concursos = $this->apiLoteria->getAllLotofacilConcursos();
 
@@ -22,33 +24,65 @@ class LotofacilImportService
             return 0;
         }
 
+        // lista de concursos que vieram da API
         $numerosApi = collect($concursos)->pluck('concurso')->all();
 
+        // concursos já existentes no banco
         $existentes = LotofacilConcurso::whereIn('concurso', $numerosApi)
             ->pluck('concurso')->all();
 
+        // filtra só os novos
         $novosConcursos = collect($concursos)
             ->whereNotIn('concurso', $existentes)
             ->sortBy('concurso')
             ->all();
 
-        foreach ($novosConcursos as $concurso) {
-            if (!isset($concurso['concurso'], $concurso['data'], $concurso['dezenas'])) {
-                continue; // pula dados incompletos
-            }
+        $importados = 0;
 
-            $dataConvertida = Carbon::createFromFormat('d/m/Y', $concurso['data'])->toDateString();
+        DB::beginTransaction();
 
-            LotofacilConcurso::create(
-                [
+        try {
+            foreach ($novosConcursos as $concurso) {
+                if (!isset($concurso['concurso'], $concurso['data'], $concurso['dezenas'])) {
+                    continue; // pula dados incompletos
+                }
+
+                // converte a data (com fallback seguro)
+                try {
+                    $dataConvertida = Carbon::createFromFormat('d/m/Y', $concurso['data'])->toDateString();
+                } catch (Throwable $e) {
+                    continue; // ignora se a data for inválida
+                }
+
+                // padroniza dezenas
+                $dezenas = is_array($concurso['dezenas'])
+                    ? collect($concurso['dezenas'])
+                        ->map(fn ($n) => str_pad($n, 2, '0', STR_PAD_LEFT))
+                        ->sort()
+                        ->values()
+                        ->all()
+                    : collect(explode(',', $concurso['dezenas']))
+                        ->map(fn ($n) => str_pad($n, 2, '0', STR_PAD_LEFT))
+                        ->sort()
+                        ->values()
+                        ->all();
+
+                LotofacilConcurso::create([
                     'concurso' => $concurso['concurso'],
                     'data'     => $dataConvertida,
-                    'dezenas'  => $concurso['dezenas'],
-                ]
-            );
+                    'dezenas'  => $dezenas, // array → vira JSON automaticamente
+                ]);
 
+                $importados++;
+            }
+
+            DB::commit();
+        } catch (Throwable $e) {
+            DB::rollBack();
+
+            throw $e; // deixa o erro subir para logar/monitorar
         }
 
-        return count($novosConcursos);
+        return $importados;
     }
 }
